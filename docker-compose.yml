@@ -1,0 +1,77 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    restart: unless-stopped
+
+    environment:
+      MYSQL_ROOT_PASSWORD: RootPassword123!
+      MYSQL_DATABASE: app1_db
+      MYSQL_USER: app1_user
+      MYSQL_PASSWORD: PasswordApp1Kuat!
+
+    ports:
+      - "3306:3306"
+
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pRootPassword123!"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app1:
+    build: ./app1
+    container_name: app1
+    restart: unless-stopped
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+    environment:
+      DB_HOST: mysql
+      DB_USER: app1_user
+      DB_PASS: PasswordApp1Kuat!
+      DB_NAME: app1_db
+
+    ports:
+      - "3000:3000"
+
+  app2:
+    build: ./app2
+    container_name: app2
+    restart: unless-stopped
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+    environment:
+      DB_HOST: mysql
+      DB_USER: app1_user
+      DB_PASS: PasswordApp1Kuat!
+      DB_NAME: app1_db
+
+    ports:
+      - "8080:8080"
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx
+    restart: unless-stopped
+
+    depends_on:
+      - app1
+      - app2
+
+    ports:
+      - "80:80"
+
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  mysql_data:
